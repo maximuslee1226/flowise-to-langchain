@@ -1,8 +1,12 @@
 /**
  * Zod Schema Definitions for Flowise JSON Structure
  *
- * This module provides comprehensive validation schemas for Flowise chatflow exports
- * using Zod for type-safe parsing and validation with helpful error messages.
+ * This module provides comprehensive validation schemas for Flowise chatflow
+ * AND agentflow exports using Zod for type-safe parsing and validation with
+ * helpful error messages.
+ *
+ * MODIFIED: Added AgentFlow support — relaxed version, anchor, and edge
+ * schemas to accept the AgentFlow JSON structure alongside Chatflow.
  */
 
 import { z } from 'zod';
@@ -49,9 +53,9 @@ export const FlowiseInputParamSchema = z
     min: z.number().optional(),
     max: z.number().optional(),
   })
+  .passthrough() // Allow extra AgentFlow fields like show, array, credentialNames, etc.
   .refine(
     (data) => {
-      // If type is number, min/max should be provided if specified
       if (
         data.type === 'number' &&
         data.min !== undefined &&
@@ -71,14 +75,14 @@ export const FlowiseInputParamSchema = z
  * Flowise anchor (connection point) schema
  */
 export const FlowiseAnchorSchema = z.object({
-  id: z.string().min(1, 'Anchor ID cannot be empty'),
+  id: z.string().optional(), // MODIFIED: optional — some outputAnchors use nested options with IDs instead
   name: z.string().min(1, 'Anchor name cannot be empty'),
   label: z.string().min(1, 'Anchor label cannot be empty'),
   description: z.string().optional(),
-  type: z.string().min(1, 'Anchor type cannot be empty'),
+  type: z.string().optional(), // MODIFIED: was required — AgentFlow anchors may lack type
   optional: z.boolean().optional(),
   list: z.boolean().optional(),
-});
+}).passthrough(); // Allow extra fields like options, default
 
 /**
  * Flowise node data schema with comprehensive validation
@@ -88,9 +92,8 @@ export const FlowiseNodeDataSchema = z.object({
   label: z.string().min(1, 'Node label cannot be empty'),
   version: z
     .number()
-    .int()
-    .positive('Version must be a positive integer')
-    .optional(),
+    .positive('Version must be a positive number')
+    .optional(), // MODIFIED: removed .int() — AgentFlow uses floats like 1.1, 7.1
   name: z.string().min(1, 'Node name cannot be empty'),
   type: z.string().min(1, 'Node type cannot be empty'),
   baseClasses: z
@@ -104,7 +107,7 @@ export const FlowiseNodeDataSchema = z.object({
   outputAnchors: z.array(FlowiseAnchorSchema),
   outputs: z.record(z.string(), z.unknown()).optional(),
   selected: z.boolean().optional(),
-});
+}).passthrough(); // MODIFIED: Allow extra AgentFlow fields (color, hideInput, etc.)
 
 /**
  * Flowise node schema
@@ -127,7 +130,12 @@ export const FlowiseNodeSchema = z.object({
 export const FlowiseEdgeDataSchema = z
   .object({
     label: z.string().optional(),
+    // AgentFlow edge data fields
+    sourceColor: z.string().optional(),
+    targetColor: z.string().optional(),
+    isHumanInput: z.boolean().optional(),
   })
+  .passthrough() // Allow future edge data fields
   .optional();
 
 /**
@@ -216,7 +224,16 @@ export const FlowiseChatFlowSchema = z
   )
   .refine(
     (data) => {
-      // Validate that edge handles exist on their respective nodes
+      // MODIFIED: Skip handle validation for AgentFlow exports
+      // AgentFlow nodes have empty inputAnchors and use node IDs as targetHandles
+      const isAgentFlowExport = data.nodes.some(
+        (node) => node.type === 'agentFlow' || node.type === 'agentflow'
+      );
+      if (isAgentFlowExport) {
+        return true; // AgentFlow uses a different connection model
+      }
+
+      // Chatflow: validate that edge handles exist on their respective nodes
       const nodeMap = new Map(data.nodes.map((node) => [node.id, node]));
 
       for (const edge of data.edges) {
@@ -255,6 +272,7 @@ export const FlowiseChatFlowSchema = z
 
 /**
  * Flowise v1.x schema (legacy support)
+ * MODIFIED: version allows float for AgentFlow compat
  */
 export const FlowiseChatFlowV1Schema = z
   .object({
@@ -262,23 +280,19 @@ export const FlowiseChatFlowV1Schema = z
       .array(
         FlowiseNodeSchema.extend({
           data: FlowiseNodeDataSchema.extend({
-            version: z.number().int().min(1).max(1), // v1 only
+            version: z.number().min(1).max(2), // MODIFIED: allow 1.1, etc.
           }),
         })
       )
-      .min(1, 'Chatflow must contain at least one node'),
+      .min(1, 'Flow must contain at least one node'),
     edges: z.array(FlowiseEdgeSchema),
     chatflow: ChatflowMetadataSchema.optional(),
   })
   .refine(
     (data) => {
-      // Validate that all edge endpoints reference existing nodes
       const nodeIds = new Set(data.nodes.map((node) => node.id));
       for (const edge of data.edges) {
-        if (!nodeIds.has(edge.source)) {
-          return false;
-        }
-        if (!nodeIds.has(edge.target)) {
+        if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
           return false;
         }
       }
@@ -291,30 +305,19 @@ export const FlowiseChatFlowV1Schema = z
   )
   .refine(
     (data) => {
-      // Validate that edge handles exist on their respective nodes
+      const isAgentFlowExport = data.nodes.some(
+        (node) => node.type === 'agentFlow' || node.type === 'agentflow'
+      );
+      if (isAgentFlowExport) return true;
       const nodeMap = new Map(data.nodes.map((node) => [node.id, node]));
-
       for (const edge of data.edges) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
-
         if (!sourceNode || !targetNode) continue;
-
-        // Check if source handle exists
-        const sourceHandles = sourceNode.data.outputAnchors.map(
-          (anchor) => anchor.id
-        );
-        if (!sourceHandles.includes(edge.sourceHandle)) {
-          return false;
-        }
-
-        // Check if target handle exists
-        const targetHandles = targetNode.data.inputAnchors.map(
-          (anchor) => anchor.id
-        );
-        if (!targetHandles.includes(edge.targetHandle)) {
-          return false;
-        }
+        const sourceHandles = sourceNode.data.outputAnchors.map((a) => a.id);
+        if (!sourceHandles.includes(edge.sourceHandle)) return false;
+        const targetHandles = targetNode.data.inputAnchors.map((a) => a.id);
+        if (!targetHandles.includes(edge.targetHandle)) return false;
       }
       return true;
     },
@@ -326,6 +329,7 @@ export const FlowiseChatFlowV1Schema = z
 
 /**
  * Flowise v2.x schema (current)
+ * MODIFIED: version allows float for AgentFlow compat
  */
 export const FlowiseChatFlowV2Schema = z
   .object({
@@ -333,23 +337,19 @@ export const FlowiseChatFlowV2Schema = z
       .array(
         FlowiseNodeSchema.extend({
           data: FlowiseNodeDataSchema.extend({
-            version: z.number().int().min(2), // v2+
+            version: z.number().min(2), // MODIFIED: removed .int()
           }),
         })
       )
-      .min(1, 'Chatflow must contain at least one node'),
+      .min(1, 'Flow must contain at least one node'),
     edges: z.array(FlowiseEdgeSchema),
     chatflow: ChatflowMetadataSchema.optional(),
   })
   .refine(
     (data) => {
-      // Validate that all edge endpoints reference existing nodes
       const nodeIds = new Set(data.nodes.map((node) => node.id));
       for (const edge of data.edges) {
-        if (!nodeIds.has(edge.source)) {
-          return false;
-        }
-        if (!nodeIds.has(edge.target)) {
+        if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
           return false;
         }
       }
@@ -362,30 +362,19 @@ export const FlowiseChatFlowV2Schema = z
   )
   .refine(
     (data) => {
-      // Validate that edge handles exist on their respective nodes
+      const isAgentFlowExport = data.nodes.some(
+        (node) => node.type === 'agentFlow' || node.type === 'agentflow'
+      );
+      if (isAgentFlowExport) return true;
       const nodeMap = new Map(data.nodes.map((node) => [node.id, node]));
-
       for (const edge of data.edges) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
-
         if (!sourceNode || !targetNode) continue;
-
-        // Check if source handle exists
-        const sourceHandles = sourceNode.data.outputAnchors.map(
-          (anchor) => anchor.id
-        );
-        if (!sourceHandles.includes(edge.sourceHandle)) {
-          return false;
-        }
-
-        // Check if target handle exists
-        const targetHandles = targetNode.data.inputAnchors.map(
-          (anchor) => anchor.id
-        );
-        if (!targetHandles.includes(edge.targetHandle)) {
-          return false;
-        }
+        const sourceHandles = sourceNode.data.outputAnchors.map((a) => a.id);
+        if (!sourceHandles.includes(edge.sourceHandle)) return false;
+        const targetHandles = targetNode.data.inputAnchors.map((a) => a.id);
+        if (!targetHandles.includes(edge.targetHandle)) return false;
       }
       return true;
     },

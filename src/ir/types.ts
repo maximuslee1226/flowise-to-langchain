@@ -208,7 +208,7 @@ export interface FlowiseNode {
   data: {
     id: string;
     label: string;
-    version: number;
+    version?: number;
     name: string;
     type: string;
     baseClasses: string[];
@@ -220,6 +220,7 @@ export interface FlowiseNode {
     outputAnchors: FlowiseAnchor[];
     outputs?: Record<string, unknown>;
     selected?: boolean;
+    [k: string]: unknown;
   };
   width?: number;
   height?: number;
@@ -251,19 +252,21 @@ export interface FlowiseInputParam {
   step?: number;
   min?: number;
   max?: number;
+  [k: string]: unknown;
 }
 
 /**
  * Flowise anchor (connection point)
  */
 export interface FlowiseAnchor {
-  id: string;
+  id?: string;
   name: string;
   label: string;
   description?: string;
-  type: string;
+  type?: string;
   optional?: boolean;
   list?: boolean;
+  [k: string]: unknown;
 }
 
 /**
@@ -278,6 +281,10 @@ export interface FlowiseEdge {
   id: string;
   data?: {
     label?: string;
+    sourceColor?: string;
+    targetColor?: string;
+    isHumanInput?: boolean;
+    [k: string]: unknown;
   };
 }
 

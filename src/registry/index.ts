@@ -217,6 +217,13 @@ export {
   SubflowNodeConverter,
 } from './converters/agentflow-v2.js';
 
+// AgentFlow V2 Control-Flow Node Converters
+export {
+  StartAgentFlowConverter,
+  ExecuteFlowAgentFlowConverter,
+  HumanInputAgentFlowConverter,
+} from './converters/agentflow-v2-nodes.js';
+
 // Import all converter classes for registration
 import {
   OpenAIConverter,
@@ -399,6 +406,12 @@ import {
   CustomFunctionNodeConverter,
   SubflowNodeConverter,
 } from './converters/agentflow-v2.js';
+
+import {
+  StartAgentFlowConverter,
+  ExecuteFlowAgentFlowConverter,
+  HumanInputAgentFlowConverter,
+} from './converters/agentflow-v2-nodes.js';
 
 // Cache Converters
 export {
@@ -639,6 +652,11 @@ export const BUILT_IN_CONVERTERS = [
   CustomFunctionNodeConverter,
   SubflowNodeConverter,
 
+  // AgentFlow V2 Control-Flow Node Converters
+  StartAgentFlowConverter,
+  ExecuteFlowAgentFlowConverter,
+  HumanInputAgentFlowConverter,
+
   // Cache Converters
   RedisCacheConverter,
   InMemoryCacheConverter,
@@ -869,6 +887,17 @@ export function initializeRegistry(): void {
   registry.registerAlias('subflow', 'subflowNode');
   registry.registerAlias('nestedWorkflow', 'subflowNode');
   registry.registerAlias('agentflowSubflow', 'subflowNode');
+
+  // AgentFlow V2 Control-Flow aliases
+  registry.registerAlias('startAgentflow', 'startAgentflow');
+  registry.registerAlias('start', 'startAgentflow');
+  registry.registerAlias('agentflowStart', 'startAgentflow');
+  registry.registerAlias('executeFlowAgentflow', 'executeFlowAgentflow');
+  registry.registerAlias('executeFlow', 'executeFlowAgentflow');
+  registry.registerAlias('agentflowExecuteFlow', 'executeFlowAgentflow');
+  registry.registerAlias('humanInputAgentflow', 'humanInputAgentflow');
+  registry.registerAlias('humanInput', 'humanInputAgentflow');
+  registry.registerAlias('agentflowHumanInput', 'humanInputAgentflow');
 
   // Cache aliases
   registry.registerAlias('cache', 'inMemoryCache');

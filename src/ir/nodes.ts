@@ -127,6 +127,14 @@ export type TextSplitterNodeType =
   | 'jsCodeTextSplitter';
 
 /**
+ * AgentFlow control-flow node types
+ */
+export type AgentFlowNodeType =
+  | 'startAgentflow'
+  | 'executeFlowAgentflow'
+  | 'humanInputAgentflow';
+
+/**
  * All supported node types
  */
 export type SupportedNodeType =
@@ -138,7 +146,8 @@ export type SupportedNodeType =
   | VectorStoreNodeType
   | EmbeddingNodeType
   | PromptNodeType
-  | TextSplitterNodeType;
+  | TextSplitterNodeType
+  | AgentFlowNodeType;
 
 /**
  * Node configuration template
@@ -1026,6 +1035,170 @@ export const NodeTemplates: Record<string, NodeTemplate> = {
       },
     ],
     tags: ['agent', 'structured', 'chat', 'tools'],
+  },
+
+  // AgentFlow Control-Flow Nodes
+  startAgentflow: {
+    type: 'startAgentflow' as SupportedNodeType,
+    category: 'agentflow',
+    label: 'Start',
+    description: 'Starting point of the agentflow – validates input and initialises flow state',
+    version: '1.1',
+    inputs: [],
+    outputs: [
+      {
+        id: 'startAgentflow',
+        label: 'Start',
+        type: 'output',
+        dataType: PortTypes.ANY,
+        description: 'Flow entry output',
+      },
+    ],
+    parameters: [
+      {
+        name: 'startInputType',
+        type: 'string',
+        value: 'chatInput',
+        required: false,
+        description: 'Input type: chatInput or formInput',
+      },
+      {
+        name: 'startEphemeralMemory',
+        type: 'boolean',
+        value: false,
+        required: false,
+        description: 'Start fresh for every execution without past chat history',
+      },
+      {
+        name: 'startState',
+        type: 'string',
+        value: undefined,
+        required: false,
+        description: 'Runtime state during the execution of the workflow',
+      },
+      {
+        name: 'startPersistState',
+        type: 'boolean',
+        value: false,
+        required: false,
+        description: 'Persist the state in the same session',
+      },
+    ],
+    tags: ['agentflow', 'start', 'entry'],
+  },
+
+  executeFlowAgentflow: {
+    type: 'executeFlowAgentflow' as SupportedNodeType,
+    category: 'agentflow',
+    label: 'Execute Flow',
+    description: 'Execute another Flowise chatflow via HTTP API',
+    version: '1.1',
+    inputs: [
+      {
+        id: 'input',
+        label: 'Input',
+        type: 'input',
+        dataType: PortTypes.ANY,
+        description: 'Incoming flow connection',
+      },
+    ],
+    outputs: [
+      {
+        id: 'executeFlowAgentflow',
+        label: 'Execute Flow',
+        type: 'output',
+        dataType: PortTypes.ANY,
+        description: 'Flow execution output',
+      },
+    ],
+    parameters: [
+      {
+        name: 'executeFlowSelectedFlow',
+        type: 'string',
+        value: '',
+        required: true,
+        description: 'ID of the Flowise chatflow to execute',
+      },
+      {
+        name: 'executeFlowInput',
+        type: 'string',
+        value: '{{ question }}',
+        required: false,
+        description: 'Input to send to the chatflow',
+      },
+      {
+        name: 'executeFlowBaseURL',
+        type: 'string',
+        value: 'http://localhost:3000',
+        required: false,
+        description: 'Base URL of the Flowise instance',
+      },
+      {
+        name: 'executeFlowReturnResponseAs',
+        type: 'string',
+        value: 'userMessage',
+        required: false,
+        description: 'Return response as userMessage or assistantMessage',
+      },
+    ],
+    tags: ['agentflow', 'execute', 'flow', 'http'],
+  },
+
+  humanInputAgentflow: {
+    type: 'humanInputAgentflow' as SupportedNodeType,
+    category: 'agentflow',
+    label: 'Human Input',
+    description: 'Request human input, approval or rejection during execution',
+    version: '1.0',
+    inputs: [
+      {
+        id: 'input',
+        label: 'Input',
+        type: 'input',
+        dataType: PortTypes.ANY,
+        description: 'Incoming flow connection',
+      },
+    ],
+    outputs: [
+      {
+        id: 'humanInputAgentflow',
+        label: 'Human Input',
+        type: 'output',
+        dataType: PortTypes.ANY,
+        description: 'Human input output',
+      },
+    ],
+    parameters: [
+      {
+        name: 'humanInputDescriptionType',
+        type: 'string',
+        value: 'dynamic',
+        required: false,
+        description: 'Description type: fixed or dynamic (LLM-generated)',
+      },
+      {
+        name: 'humanInputModel',
+        type: 'string',
+        value: 'azureChatOpenAI',
+        required: false,
+        description: 'LLM model to use for dynamic descriptions',
+      },
+      {
+        name: 'humanInputModelPrompt',
+        type: 'string',
+        value: '',
+        required: false,
+        description: 'Prompt for the LLM to generate a summary',
+      },
+      {
+        name: 'humanInputEnableFeedback',
+        type: 'boolean',
+        value: true,
+        required: false,
+        description: 'Enable human feedback collection',
+      },
+    ],
+    tags: ['agentflow', 'human', 'input', 'interrupt'],
   },
 };
 

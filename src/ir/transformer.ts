@@ -568,8 +568,23 @@ export class IRToCodeTransformer {
       case 'chatAgent':
         fragments.push(...this.generateAgentNode(node, context, graph));
         break;
-      default:
+      default: {
+        // Try the converter registry before falling back to generic handler
+        const registry = ConverterFactory.getRegistry();
+        const converter = registry.getConverter(node.type);
+        if (converter) {
+          try {
+            const registryFragments = converter.convert(node, context);
+            if (registryFragments.length > 0) {
+              fragments.push(...registryFragments);
+              break;
+            }
+          } catch (_error) {
+            // Fall through to generic handler
+          }
+        }
         fragments.push(this.generateGenericNode(node, context));
+      }
     }
 
     return fragments;
