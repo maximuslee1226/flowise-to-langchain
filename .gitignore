@@ -112,30 +112,31 @@ jest-cache/
 # Prettier
 .prettierignore
 
-# Claude Flow generated files
+# Claude Code / Claude Flow
 .claude/
 .claude-flow/
-.claude/mcp.json
 .swarm/
-.hive-mind/
-memory/claude-flow-data.json
-memory/sessions/*
-!memory/sessions/README.md
-memory/agents/*
-!memory/agents/README.md
-coordination/memory_bank/*
-coordination/subtasks/*
-coordination/orchestration/*
+memory/
+coordination/
+claude-flow
+claude-flow.bat
+claude-flow.ps1
+hive-mind-prompt-*.txt
 *.db
 *.db-journal
 *.db-wal
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
-claude-flow
-claude-flow.bat
-claude-flow.ps1
-hive-mind-prompt-*.txt
+
+# Removed extras (frontends, UI testing, deployment)
+frontend/
+testing-ui/
+validation/
+playwright.config.ts
+playwright-*.config.ts
+.lighthouserc.json
+DEPLOYMENT-READY-CHECKLIST.md
 
 # Project cleanup patterns
 # Temporary test and build scripts
