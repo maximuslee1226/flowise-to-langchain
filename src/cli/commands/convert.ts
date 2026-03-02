@@ -90,7 +90,7 @@ export const convertCommand = new Command('convert')
       const result = await pipeline.convertFile(resolvedInput, {
         outputPath: resolvedOutput,
         includeLangfuse: conversionOptions.withLangfuse,
-        target: 'typescript',
+        target: conversionOptions.format === 'python' ? 'python' as any : 'typescript',
         outputFormat: conversionOptions.format === 'javascript' ? 'cjs' : 'esm',
         includeComments: true,
         overwrite: conversionOptions.overwrite,

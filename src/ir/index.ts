@@ -87,11 +87,28 @@ export class IRProcessor {
       );
     }
 
-    // Generate code from IR
+    // Generate code from IR (always generate TS fragments first)
     const code = await this.codeTransformer.generateCode(
       transformationResult.graph,
       context
     );
+
+    // If target is Python, run the Python emitter over the TS fragments
+    if (context.targetLanguage === 'python') {
+      const { PythonEmitter } = await import('../emitters/python/index.js');
+      const pythonEmitter = new PythonEmitter();
+      const fragments = this.codeTransformer.getLastFragments?.() ?? [];
+      const pythonResult = await pythonEmitter.generateCode(
+        transformationResult.graph,
+        context,
+        fragments
+      );
+      return {
+        ir: transformationResult.graph,
+        code: pythonResult,
+        transformationResult,
+      };
+    }
 
     return {
       ir: transformationResult.graph,

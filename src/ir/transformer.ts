@@ -382,6 +382,13 @@ export class FlowiseToIRTransformer {
  * IR to Code transformer
  */
 export class IRToCodeTransformer {
+  private _lastFragments: CodeFragment[] = [];
+
+  /** Retrieve the fragments from the last generateCode() call */
+  getLastFragments(): CodeFragment[] {
+    return this._lastFragments;
+  }
+
   /**
    * Generate code fragments from IR graph
    */
@@ -403,6 +410,9 @@ export class IRToCodeTransformer {
 
       // Generate flow execution code
       fragments.push(...this.generateExecutionCode(graph, context));
+
+      // Save fragments for potential Python emitter use
+      this._lastFragments = [...fragments];
 
       // Generate files
       const files = this.generateFiles(fragments, context);
